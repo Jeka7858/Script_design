@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Assistant - Помощник для телефонных звонков</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .scenario-card {
+            transition: all 0.3s ease;
+        }
+        .scenario-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .step-option {
+            transition: all 0.2s ease;
+        }
+        .step-option:hover {
+            background-color: #f3f4f6;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Main Container -->
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Home Page -->
+        <div id="homePage" class="fade-in">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="flex items-center justify-center mb-4">
+                    <i class="fas fa-phone text-5xl text-blue-600 mr-3"></i>
+                    <h1 class="text-4xl font-bold text-gray-900">Call Assistant</h1>
+                </div>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Профессиональный помощник для телефонных звонков с настраиваемыми сценариями
+                </p>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex flex-wrap justify-center gap-4 mb-8">
+                <button onclick="showManageScenarios()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                    <i class="fas fa-cog"></i>
+                    Управление сценариями
+                </button>
+                <button onclick="showInstructions()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                    <i class="fas fa-book"></i>
+                    Инструкции
+                </button>
+            </div>
+
+            <!-- Scenarios Grid -->
+            <div id="scenariosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Scenarios will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Scenario Runner Page -->
+        <div id="scenarioPage" class="hidden">
+            <div class="flex h-screen -m-8">
+                <!-- Sidebar -->
+                <div id="sidebar" class="w-80 bg-white border-r border-gray-200 flex flex-col">
+                    <div class="p-4 border-b border-gray-200">
+                        <h3 class="font-semibold text-gray-900">Карта сценария</h3>
+                    </div>
+                    <div id="scenarioMap" class="flex-1 overflow-auto p-4">
+                        <!-- Map will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="flex-1 flex flex-col">
+                    <!-- Header -->
+                    <div class="p-4 border-b border-gray-200 bg-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-4">
+                                <button onclick="showHome()" class="bg-white border border-gray-300 p-2 rounded-lg hover:bg-gray-50">
+                                    <i class="fas fa-arrow-left"></i>
+                                </button>
+                                <div>
+                                    <h1 id="scenarioTitle" class="text-2xl font-bold text-gray-900"></h1>
+                                    <p id="scenarioDescription" class="text-gray-600"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                                    <i class="fas fa-phone text-xs"></i>
+                                    Активный звонок
+                                </span>
+                                <button onclick="resetScenario()" class="bg-white border border-gray-300 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm">
+                                    <i class="fas fa-redo mr-1"></i>
+                                    Сначала
+                                </button>
+                                <button onclick="showStats()" class="bg-white border border-gray-300 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm">
+                                    <i class="fas fa-chart-bar mr-1"></i>
+                                    Статистика
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Progress -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-gray-700">Прогресс</span>
+                                <span id="progressText" class="text-sm text-gray-500"></span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="progressBar" class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="flex-1 overflow-auto p-4 space-y-6">
+                        <!-- Current Step -->
+                        <div id="currentStepCard" class="bg-white rounded-lg shadow-md p-6">
+                            <!-- Step content will be loaded here -->
+                        </div>
+
+                        <!-- Notes Section -->
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="fas fa-sticky-note text-yellow-600"></i>
+                                <h3 class="text-lg font-semibold">Заметки во время разговора</h3>
+                            </div>
+                            <textarea id="callNotes" class="w-full p-3 border border-gray-300 rounded-lg resize-none" rows="6" 
+                                placeholder="Записывайте заметки во время разговора...&#10;• Возражения клиента&#10;• Важные детали&#10;• Договоренности&#10;• Контактная информация"></textarea>
+                            <div class="mt-3 flex justify-between items-center text-sm text-gray-500">
+                                <span id="notesCounter">0 символов</span>
+                                <button onclick="copyNotes()" class="text-blue-600 hover:text-blue-800">Копировать заметки</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Scenarios Page -->
+        <div id="managePage" class="hidden fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <button onclick="showHome()" class="bg-white border border-gray-300 p-2 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Управление сценариями</h1>
+                        <p class="text-gray-600">Создавайте, редактируйте и управляйте вашими сценариями</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportScenarios()" class="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-download mr-2"></i>
+                        Экспорт
+                    </button>
+                    <button onclick="importScenarios()" class="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-upload mr-2"></i>
+                        Импорт
+                    </button>
+                    <button onclick="showCreateScenario()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>
+                        Создать сценарий
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="mb-6">
+                <input type="text" id="searchInput" placeholder="Поиск сценариев..." 
+                    class="w-full max-w-md p-3 border border-gray-300 rounded-lg" onkeyup="filterScenarios()">
+            </div>
+
+            <!-- Scenarios List -->
+            <div id="scenariosList" class="space-y-4">
+                <!-- Scenarios will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Create/Edit Scenario Page -->
+        <div id="createPage" class="hidden fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <button onclick="showManageScenarios()" class="bg-white border border-gray-300 p-2 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 id="createPageTitle" class="text-2xl font-bold text-gray-900">Создание сценария</h1>
+                        <p class="text-gray-600">Настройте новый сценарий для телефонных звонков</p>
+                    </div>
+                </div>
+                <button onclick="saveScenario()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-save mr-2"></i>
+                    Сохранить сценарий
+                </button>
+            </div>
+
+            <!-- Scenario Form -->
+            <div class="space-y-6">
+                <!-- Basic Info -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold mb-4">Основная информация</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Название сценария</label>
+                            <input type="text" id="scenarioName" class="w-full p-3 border border-gray-300 rounded-lg" 
+                                placeholder="Например: Продажа услуг">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Описание</label>
+                            <textarea id="scenarioDescriptionInput" class="w-full p-3 border border-gray-300 rounded-lg" rows="3" 
+                                placeholder="Краткое описание сценария"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">URL Webhook (опционально)</label>
+                            <input type="url" id="scenarioWebhook" class="w-full p-3 border border-gray-300 rounded-lg" 
+                                placeholder="https://api.example.com/webhook">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Steps -->
+                <div id="stepsContainer">
+                    <!-- Steps will be loaded here -->
+                </div>
+
+                <!-- Add Step Button -->
+                <div class="bg-white rounded-lg shadow-md border-2 border-dashed border-gray-300 p-8 text-center">
+                    <button onclick="addStep()" class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-plus text-2xl mb-2"></i>
+                        <div class="text-lg font-medium">Добавить новый шаг</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Page -->
+        <div id="statsPage" class="hidden fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <button onclick="backToScenario()" class="bg-white border border-gray-300 p-2 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Статистика сценария</h1>
+                        <p id="statsScenarioName" class="text-gray-600"></p>
+                    </div>
+                </div>
+                <button onclick="exportStats()" class="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50">
+                    <i class="fas fa-download mr-2"></i>
+                    Экспорт
+                </button>
+            </div>
+
+            <!-- Stats Overview -->
+            <div id="statsOverview" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <!-- Stats cards will be loaded here -->
+            </div>
+
+            <!-- Results Distribution -->
+            <div id="resultsDistribution" class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <!-- Distribution chart will be loaded here -->
+            </div>
+
+            <!-- Recent Calls -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4">История звонков</h3>
+                <div id="recentCalls">
+                    <!-- Recent calls will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Selection Modal -->
+    <div id="resultModal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
+            <div class="flex items-center gap-2 mb-4">
+                <i class="fas fa-chart-bar text-blue-600"></i>
+                <h3 class="text-xl font-semibold">Результат звонка</h3>
+            </div>
+            <p class="text-gray-600 mb-6">Выберите результат разговора для анализа и статистики</p>
+
+            <!-- Result Buttons -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <button onclick="selectResult('success')" class="result-btn p-4 border border-gray-300 rounded-lg hover:border-blue-500 flex flex-col items-center gap-2" data-result="success">
+                    <i class="fas fa-thumbs-up text-2xl"></i>
+                    <span class="text-sm font-medium">Согласен</span>
+                </button>
+                <button onclick="selectResult('rejection')" class="result-btn p-4 border border-gray-300 rounded-lg hover:border-blue-500 flex flex-col items-center gap-2" data-result="rejection">
+                    <i class="fas fa-thumbs-down text-2xl"></i>
+                    <span class="text-sm font-medium">Отказ</span>
+                </button>
+                <button onclick="selectResult('postponed')" class="result-btn p-4 border border-gray-300 rounded-lg hover:border-blue-500 flex flex-col items-center gap-2" data-result="postponed">
+                    <i class="fas fa-clock text-2xl"></i>
+                    <span class="text-sm font-medium">Отложил</span>
+                </button>
+                <button onclick="selectResult('other')" class="result-btn p-4 border border-gray-300 rounded-lg hover:border-blue-500 flex flex-col items-center gap-2" data-result="other">
+                    <i class="fas fa-comment text-2xl"></i>
+                    <span class="text-sm font-medium">Другое</span>
+                </button>
+            </div>
+
+            <!-- Result Notes -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Дополнительные заметки о результате</label>
+                <textarea id="resultNotes" class="w-full p-3 border border-gray-300 rounded-lg" rows="3" 
+                    placeholder="Опишите детали разговора, причины решения клиента, договоренности..."></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3">
+                <button id="saveResultBtn" onclick="saveCallResult()" disabled class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                    Сохранить результат
+                </button>
+                <button onclick="closeResultModal()" class="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+
+    <script src="app.js"></script>
+</body>
+</html>
